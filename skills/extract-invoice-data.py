@@ -286,10 +286,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract and verify invoice data using Agent SDK")
     parser.add_argument("images", nargs="+", help="Invoice image file paths")
     parser.add_argument("--output-dir", required=True, help="Directory to save output files")
+    parser.add_argument("--project-id", help="Project ID for linking invoice")
+    parser.add_argument("--contract-id", help="Contract ID for linking invoice")
+    parser.add_argument("--vendor-id", help="Vendor ID for linking invoice")
+    parser.add_argument("--document-id", help="Document ID for linking invoice")
 
     args = parser.parse_args()
 
     result = asyncio.run(extract_invoice_data(args.images, args.output_dir))
+
+    # Add context IDs to result if provided
+    if args.project_id:
+        result["projectId"] = args.project_id
+    if args.contract_id:
+        result["contractId"] = args.contract_id
+    if args.vendor_id:
+        result["vendorId"] = args.vendor_id
+    if args.document_id:
+        result["documentId"] = args.document_id
+
     print(json.dumps(result, indent=2))
 
     sys.exit(0 if result["success"] else 1)
