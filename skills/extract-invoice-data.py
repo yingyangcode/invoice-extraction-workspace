@@ -241,6 +241,8 @@ Extract the invoice information including vendor name, invoice number, date (in 
             prompt=prompt,
             options=ClaudeAgentOptions(
                 model="claude-sonnet-4-5",
+                allowed_tools=["Read", "Edit", "Glob", "Bash"],
+                permission_mode="acceptEdits",  # Auto-approve tools for image access
                 output_format={
                     "type": "json_schema",
                     "schema": invoice_schema
