@@ -177,17 +177,73 @@ Extract the invoice information including vendor name, invoice number, date (in 
     captured_session_id = None
     extraction_result = None
 
+    # Define JSON Schema directly (matching the docs example pattern)
+    invoice_schema = {
+        "type": "object",
+        "properties": {
+            "invoice": {
+                "type": "object",
+                "properties": {
+                    "invoiceNumber": {"type": "string"},
+                    "vendorName": {"type": "string"},
+                    "invoiceDate": {"type": "string"},
+                    "totalPayableAmount": {"type": "number"},
+                    "subtotalAmount": {"type": "number"},
+                    "hstAmount": {"type": "number"},
+                    "holdbackAmount": {"type": "number"},
+                    "miscellaneousAmount": {"type": "number"},
+                    "lineItems": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "description": {"type": "string"},
+                                "quantity": {"type": "number"},
+                                "unit": {"type": "string"},
+                                "unitPrice": {"type": "number"},
+                                "amount": {"type": "number"}
+                            },
+                            "required": ["amount"]
+                        }
+                    }
+                },
+                "required": ["invoiceNumber", "vendorName", "invoiceDate", "totalPayableAmount"]
+            },
+            "verification": {
+                "type": "object",
+                "properties": {
+                    "passed": {"type": "boolean"},
+                    "checks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "passed": {"type": "boolean"},
+                                "expected": {"type": "number"},
+                                "actual": {"type": "number"},
+                                "tolerance": {"type": "number"},
+                                "message": {"type": "string"}
+                            },
+                            "required": ["name", "passed", "expected", "actual"]
+                        }
+                    }
+                },
+                "required": ["passed", "checks"]
+            }
+        },
+        "required": ["invoice", "verification"]
+    }
+
     try:
-        # Call Agent SDK with structured output
+        # Call Agent SDK with structured output (plain JSON Schema like docs example)
         response = query(
             prompt=prompt,
             options=ClaudeAgentOptions(
                 model="claude-sonnet-4-5",
-                allowed_tools=["Read"],
-                permission_mode="acceptEdits",
                 output_format={
                     "type": "json_schema",
-                    "schema": InvoiceExtraction.model_json_schema()
+                    "schema": invoice_schema
                 }
             )
         )
@@ -211,8 +267,8 @@ Extract the invoice information including vendor name, invoice number, date (in 
             # Capture structured output from result message
             elif isinstance(message, ResultMessage):
                 if message.subtype == "success" and message.structured_output:
-                    # Validate with Pydantic
-                    extraction_result = InvoiceExtraction.model_validate(message.structured_output)
+                    # Structured output is already a dict (no Pydantic validation needed)
+                    extraction_result = message.structured_output
                     print("\nExtraction complete!", flush=True)
                 elif message.subtype == "error_max_structured_output_retries":
                     return {
@@ -234,10 +290,10 @@ Extract the invoice information including vendor name, invoice number, date (in 
         session_file = os.path.join(output_dir, "session_id.txt")
 
         with open(invoice_file, 'w') as f:
-            json.dump(extraction_result.invoice.model_dump(), f, indent=2)
+            json.dump(extraction_result["invoice"], f, indent=2)
 
         with open(verification_file, 'w') as f:
-            json.dump(extraction_result.verification.model_dump(), f, indent=2)
+            json.dump(extraction_result["verification"], f, indent=2)
 
         if captured_session_id:
             with open(session_file, 'w') as f:
@@ -247,9 +303,9 @@ Extract the invoice information including vendor name, invoice number, date (in 
             "success": True,
             "session_id": captured_session_id,
             "output_dir": output_dir,
-            "verification_passed": extraction_result.verification.passed,
-            "invoice": extraction_result.invoice.model_dump(),
-            "verification": extraction_result.verification.model_dump(),
+            "verification_passed": extraction_result["verification"]["passed"],
+            "invoice": extraction_result["invoice"],
+            "verification": extraction_result["verification"],
             "files": {
                 "invoice_data": invoice_file,
                 "verification_report": verification_file,
