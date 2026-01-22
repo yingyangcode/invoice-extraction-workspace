@@ -86,7 +86,8 @@ import os
 import json
 import argparse
 from pathlib import Path
-from pydantic import BaseModel
+from datetime import date
+from pydantic import BaseModel, Field
 from claude_agent_sdk import (
     query,
     ClaudeAgentOptions,
@@ -100,43 +101,43 @@ from claude_agent_sdk import (
 
 # Define structured output schemas with Pydantic
 class LineItem(BaseModel):
-    description: str
-    quantity: float
-    unit: str
-    unitPrice: float
-    amount: float
+    description: str = Field(description="Description of the line item work or materials")
+    quantity: float = Field(description="Quantity of the line item")
+    unit: str = Field(description="Unit of measurement (e.g., hours, each, sq ft)")
+    unitPrice: float = Field(description="Price per unit")
+    amount: float = Field(description="Total amount for this line item (quantity × unitPrice)")
 
 
 class InvoiceData(BaseModel):
-    invoiceNumber: str
-    vendorName: str
-    invoiceDate: str  # YYYY-MM-DD
-    totalPayableAmount: float
-    subtotalAmount: float
-    hstAmount: float
-    holdbackAmount: float
-    miscellaneousAmount: float
-    lineItems: list[LineItem]
+    invoiceNumber: str = Field(description="Invoice number as shown on the document")
+    vendorName: str = Field(description="Name of the vendor/contractor")
+    invoiceDate: date = Field(description="Invoice date in YYYY-MM-DD format (convert from any format shown)")
+    totalPayableAmount: float = Field(description="Total amount payable on the invoice")
+    subtotalAmount: float = Field(description="Subtotal before taxes and other adjustments")
+    hstAmount: float = Field(description="HST/tax amount (use 0.0 if not applicable)")
+    holdbackAmount: float = Field(description="Holdback/retainage amount (use 0.0 if not applicable)")
+    miscellaneousAmount: float = Field(description="Any miscellaneous charges or credits (use 0.0 if not applicable)")
+    lineItems: list[LineItem] = Field(description="List of all line items from the invoice")
 
 
 class VerificationCheck(BaseModel):
-    name: str
-    passed: bool
-    expected: float
-    actual: float
-    tolerance: float = 0.0
-    message: str
+    name: str = Field(description="Name of the verification check (e.g., 'line_items_sum', 'hst_calculation', 'total_calculation')")
+    passed: bool = Field(description="Whether this verification check passed")
+    expected: float = Field(description="Expected value for this check")
+    actual: float = Field(description="Actual calculated value")
+    tolerance: float = Field(default=0.0, description="Tolerance allowed for this check (0.0 for exact match)")
+    message: str = Field(description="Human-readable message explaining the check result")
 
 
 class VerificationReport(BaseModel):
-    passed: bool  # True only if ALL checks pass
-    checks: list[VerificationCheck]
+    passed: bool = Field(description="True only if ALL verification checks passed")
+    checks: list[VerificationCheck] = Field(description="List of all verification checks performed")
 
 
 class InvoiceExtraction(BaseModel):
     """Combined schema for invoice extraction and verification"""
-    invoice: InvoiceData
-    verification: VerificationReport
+    invoice: InvoiceData = Field(description="Extracted invoice data including all line items and amounts")
+    verification: VerificationReport = Field(description="Verification report with all calculation checks")
 
 
 async def extract_invoice_data(image_paths: list[str], output_dir: str):
@@ -178,6 +179,7 @@ async def extract_invoice_data(image_paths: list[str], output_dir: str):
 
 The response will be structured output containing:
 - **invoice**: All extracted invoice data (number, vendor, date, amounts, line items)
+  - **IMPORTANT**: Format invoiceDate as YYYY-MM-DD (e.g., "2022-09-30" not "09/30/2022")
 - **verification**: Results of validation checks on the extracted data
 
 **Verification checks to perform:**
