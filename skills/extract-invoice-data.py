@@ -199,7 +199,6 @@ The overall verification.passed field should be true ONLY if ALL checks pass.
                 model="claude-sonnet-4-5",
                 allowed_tools=["Read"],
                 permission_mode="acceptEdits",
-                max_tokens=8192,
                 output_format={
                     "type": "json_schema",
                     "schema": InvoiceExtraction.model_json_schema()
