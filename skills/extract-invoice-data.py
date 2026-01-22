@@ -165,21 +165,12 @@ async def extract_invoice_data(image_paths: list[str], output_dir: str):
     # Build file context for the agent
     files_context = "\n".join([f"- {path}" for path in image_paths])
 
-    # Create extraction and verification prompt - task-focused, not format-focused
-    prompt = f"""Extract and verify invoice data from the following image:
+    # Create extraction and verification prompt - minimal and direct
+    prompt = f"""Extract and verify invoice data from this image:
 
 {files_context}
 
-Tasks:
-1. Read the invoice image to extract all information
-2. Identify the vendor name, invoice number, and invoice date (convert any date format to YYYY-MM-DD)
-3. Extract all line items with their descriptions, quantities, units, unit prices, and amounts
-4. Record the subtotal, HST/tax amount, holdback amount, miscellaneous charges, and total payable amount
-5. Verify the calculations:
-   - Check if line items sum equals the subtotal
-   - Check if HST is 13% of subtotal (allow 1% tolerance)
-   - Check if total equals: subtotal + HST - holdback + miscellaneous
-6. Use 0.0 for any amounts that don't appear on the invoice
+Extract the invoice information including vendor name, invoice number, date (in YYYY-MM-DD format), all line items, and amounts. Verify that line items sum to subtotal, HST is 13% of subtotal, and total equals subtotal + HST - holdback + miscellaneous. Use 0.0 for amounts not on the invoice.
 """
 
     # Track session ID and structured output
