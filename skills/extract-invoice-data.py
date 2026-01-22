@@ -126,7 +126,7 @@ class VerificationCheck(BaseModel):
     expected: float = Field(description="Expected value for this check")
     actual: float = Field(description="Actual calculated value")
     tolerance: float = Field(default=0.0, description="Tolerance allowed for this check (0.0 for exact match)")
-    message: str = Field(description="Human-readable message explaining the check result")
+    message: str = Field(default="", description="Human-readable message explaining the check result")
 
 
 class VerificationReport(BaseModel):
