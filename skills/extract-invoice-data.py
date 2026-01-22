@@ -165,42 +165,21 @@ async def extract_invoice_data(image_paths: list[str], output_dir: str):
     # Build file context for the agent
     files_context = "\n".join([f"- {path}" for path in image_paths])
 
-    # Create extraction and verification prompt
-    prompt = f"""Read the invoice image and extract data according to the EXACT schema provided.
+    # Create extraction and verification prompt - task-focused, not format-focused
+    prompt = f"""Extract and verify invoice data from the following image:
 
-**Invoice image file:**
 {files_context}
 
-**Instructions:**
-
-1. Use your Read tool to read the invoice image
-2. Extract ONLY the fields defined in the schema - do not add extra fields
-3. Return structured output matching the InvoiceExtraction schema exactly
-
-**CRITICAL - Field Requirements:**
-
-**invoice.invoiceNumber**: Invoice number as a string
-**invoice.vendorName**: Vendor/contractor name only (no address/contact info)
-**invoice.invoiceDate**: Date in YYYY-MM-DD format (convert "09/30/2022" → "2022-09-30")
-**invoice.totalPayableAmount**: Total amount due
-**invoice.subtotalAmount**: Subtotal before tax
-**invoice.hstAmount**: HST/tax amount (0.0 if none)
-**invoice.holdbackAmount**: Holdback amount (0.0 if none)
-**invoice.miscellaneousAmount**: Misc charges (0.0 if none)
-**invoice.lineItems**: Array of items, each with:
-  - description: Work/materials description
-  - quantity: Numeric quantity
-  - unit: Unit of measure (hours, each, etc.)
-  - unitPrice: Price per unit
-  - amount: Total (quantity × unitPrice)
-
-**verification.passed**: true ONLY if ALL checks pass
-**verification.checks**: Array with exactly 3 checks:
-  1. line_items_sum: Sum(lineItems.amount) = subtotalAmount
-  2. hst_calculation: hstAmount = 13% of subtotalAmount (±1% tolerance)
-  3. total_calculation: totalPayableAmount = subtotalAmount + hstAmount - holdbackAmount + miscellaneousAmount
-
-Do not include explanations or extra fields. Return only the structured data.
+Tasks:
+1. Read the invoice image to extract all information
+2. Identify the vendor name, invoice number, and invoice date (convert any date format to YYYY-MM-DD)
+3. Extract all line items with their descriptions, quantities, units, unit prices, and amounts
+4. Record the subtotal, HST/tax amount, holdback amount, miscellaneous charges, and total payable amount
+5. Verify the calculations:
+   - Check if line items sum equals the subtotal
+   - Check if HST is 13% of subtotal (allow 1% tolerance)
+   - Check if total equals: subtotal + HST - holdback + miscellaneous
+6. Use 0.0 for any amounts that don't appear on the invoice
 """
 
     # Track session ID and structured output
