@@ -87,7 +87,15 @@ import json
 import argparse
 from pathlib import Path
 from pydantic import BaseModel
-from claude_agent_sdk import query, ClaudeAgentOptions, ResultMessage
+from claude_agent_sdk import (
+    query,
+    ClaudeAgentOptions,
+    ResultMessage,
+    SystemMessage,
+    AssistantMessage,
+    TextBlock,
+    ToolUseBlock,
+)
 
 
 # Define structured output schemas with Pydantic
@@ -208,19 +216,19 @@ The overall verification.passed field should be true ONLY if ALL checks pass.
 
         # Stream agent messages
         async for message in response:
-            # Capture session ID from init message
-            if message.type == "system" and message.subtype == "init":
-                captured_session_id = message.session_id
-                print(f"SESSION_ID:{message.session_id}", flush=True)
+            # Capture session ID from SystemMessage with init subtype
+            if isinstance(message, SystemMessage):
+                if message.subtype == "init":
+                    captured_session_id = message.data.get("session_id")
+                    print(f"SESSION_ID:{captured_session_id}", flush=True)
 
-            # Print text messages
-            elif message.type == "text":
-                print(f"Agent: {message.content}", flush=True)
-
-            # Print tool use
-            elif message.type == "tool_use":
-                tool_name = getattr(message, 'tool_name', 'unknown')
-                print(f"Agent using tool: {tool_name}", flush=True)
+            # Print text and tool use from AssistantMessage content blocks
+            elif isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        print(f"Agent: {block.text}", flush=True)
+                    elif isinstance(block, ToolUseBlock):
+                        print(f"Agent using tool: {block.name}", flush=True)
 
             # Capture structured output from result message
             elif isinstance(message, ResultMessage):
